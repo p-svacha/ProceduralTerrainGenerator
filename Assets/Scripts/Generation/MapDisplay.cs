@@ -1,31 +1,69 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static MapGenerator;
 
 public class MapDisplay : MonoBehaviour
 {
     public Renderer TextureRenderer;
+    public MeshFilter MeshFilter;
+    public MeshRenderer MeshRenderer;
 
-    public void DrawNoiseMap(float[,] noiseMap)
+    public void DrawMapInEditor(DrawMode drawMode, int mapChunkSize, MapData mapData, float heightMultiplier, int levelOfDetail)
     {
-        int width = noiseMap.GetLength(0);
-        int height = noiseMap.GetLength(1);
+        // Create Textures
+        Texture2D heightMapTexture = TextureGenerator.TextureFromHeightMap(mapData.HeightMap);
+        Texture2D colorMapTexture = TextureGenerator.TextureFromColorMap(mapData.ColorMap, mapChunkSize, mapChunkSize);
 
-        Texture2D texture = new Texture2D(width, height);
+        // Create Mesh
+        MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData, heightMultiplier, levelOfDetail);
 
-        Color[] colorMap = new Color[width * height];
-        for(int y = 0; y < height; y++)
+        // Draw Map according to DrawMode
+
+        switch (drawMode)
         {
-            for(int x = 0; x < width; x++)
-            {
-                colorMap[y * width + x] = Color.Lerp(Color.black, Color.white, noiseMap[x, y]);
-            }
+            case DrawMode.NoiseMap:
+                MeshRenderer.gameObject.SetActive(false);
+                TextureRenderer.gameObject.SetActive(true);
+                DrawTexture(heightMapTexture);
+                break;
+
+            case DrawMode.ColorMap:
+                MeshRenderer.gameObject.SetActive(false);
+                TextureRenderer.gameObject.SetActive(true);
+                DrawTexture(colorMapTexture);
+                break;
+
+            case DrawMode.MeshNoiseTexture:
+                MeshRenderer.gameObject.SetActive(true);
+                TextureRenderer.gameObject.SetActive(false);
+                DrawMesh(meshData, heightMapTexture);
+                break;
+
+            case DrawMode.MeshColorTexture:
+                MeshRenderer.gameObject.SetActive(true);
+                TextureRenderer.gameObject.SetActive(false);
+                DrawMesh(meshData, colorMapTexture);
+                break;
         }
+    }
 
-        texture.SetPixels(colorMap);
-        texture.Apply();
+    public void HideMap()
+    {
+        MeshRenderer.gameObject.SetActive(false);
+        TextureRenderer.gameObject.SetActive(false);
+    }
 
+
+    public void DrawTexture(Texture2D texture)
+    {
         TextureRenderer.sharedMaterial.mainTexture = texture;
-        TextureRenderer.transform.localScale = new Vector3(width, 1, height);
+        TextureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height);
+    }
+
+    public void DrawMesh(MeshData meshData, Texture2D texture)
+    {
+        MeshFilter.sharedMesh = meshData.CreateMesh();
+        MeshRenderer.sharedMaterial.mainTexture = texture;
     }
 }
