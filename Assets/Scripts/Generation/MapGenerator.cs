@@ -6,83 +6,65 @@ using UnityEngine;
 
 public class MapGenerator : MonoBehaviour
 {
-    RandomNumberGenerator RNG;
     public DrawMode DrawMode;
 
     public const int MapChunkSize = 241; // 240 is divisible through 2,4,6,8,10
     [Range(0,6)]
     public int LevelOfDetail;
+    [Range(10, 500)]
+    public int HeightMultiplier;
 
-    public float NoiseScale;
-    [Range(10,50)]
-    public float HeightMultiplier;
-
-    [Range(1,8)]
-    public int Octaves;
-    [Range(0,1)]
-    public float Persistance; // 0.5
-    [Range(1,4)]
-    public float Lacunarity; // 2
-
-    public int Seed;
     public Vector2 Offset;
 
     public bool autoUpdate;
 
-    public TerrainType[] Regions;
-
     Queue<ThreadInfo<MapData>> mapDataThreadInfoQueue = new Queue<ThreadInfo<MapData>>();
     Queue<ThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<ThreadInfo<MeshData>>();
 
-    void Start()
+    public MapData GenerateMapData(float[,] worldHeightMap, Vector2 coordinates)
     {
-        RNG = new RandomNumberGenerator(Seed);
-    }
+        float[,] chunkHeightMap = new float[MapChunkSize, MapChunkSize];
 
+        int worldWidth = worldHeightMap.GetLength(0);
+        int worldHeight = worldHeightMap.GetLength(1);
 
-    public MapData GenerateMapData()
-    {
-        if(RNG == null) RNG = new RandomNumberGenerator(Seed); // used for editor
-        RNG = new RandomNumberGenerator(Seed);
-        float[,] noiseMap = PerlinNoise.GenerateNoiseMap(MapChunkSize, RNG, NoiseScale, Octaves, Persistance, Lacunarity, Offset);
-
-        // Apply region colors to noise map
         Color[] colorMap = new Color[MapChunkSize * MapChunkSize];
         for(int y = 0; y < MapChunkSize; y++)
         {
             for(int x = 0; x < MapChunkSize; x++)
             {
-                float currentHeight = noiseMap[x, y];
+                // Get height value of current pixel in current chunk from world height map
+                float currentHeight = worldHeightMap[(int)(coordinates.x * (MapChunkSize - 1)) + x, (worldHeight - MapChunkSize) - ((int)(coordinates.y * (MapChunkSize - 1))) + y];
+                chunkHeightMap[x, y] = currentHeight;
 
-                for(int i = 0; i < Regions.Length; i++)
-                {
-                    if (currentHeight <= Regions[i].Height)
-                    {
-                        colorMap[y * MapChunkSize + x] = Regions[i].Color;
-                        break;
-                    }
-                }
+                // Create color for this pixel
+                int colorMapIndex = y * MapChunkSize + x;
+                if (currentHeight == 0) colorMap[colorMapIndex] = Color.blue;
+                else if (currentHeight <= 0.001f) colorMap[colorMapIndex] = Color.yellow;
+                else if (currentHeight <= 0.6f) colorMap[colorMapIndex] = new Color(0, 0.5f, 0);
+                else if (currentHeight <= 0.9f) colorMap[colorMapIndex] = Color.grey;
+                else if (currentHeight <= 1f) colorMap[colorMapIndex] = Color.white;
             }
         }
 
-        MapData mapData = new MapData(noiseMap, colorMap);
+        MapData mapData = new MapData(chunkHeightMap, colorMap);
         return mapData;
     }
 
     #region Threading
-    public void RequestMapData(Action<MapData> callback)
+    public void RequestMapData(Action<MapData> callback, float[,] heightMap, Vector2 coordinates)
     {
         ThreadStart threadStart = delegate
         {
-            MapDataThread(callback);
+            MapDataThread(callback, heightMap, coordinates);
         };
         new Thread(threadStart).Start();
     }
 
     // This function runs on a different thread
-    public void MapDataThread(Action<MapData> callback)
+    public void MapDataThread(Action<MapData> callback, float[,] heightMap, Vector2 coordinates)
     {
-        MapData mapData = GenerateMapData();
+        MapData mapData = GenerateMapData(heightMap, coordinates);
         lock (mapDataThreadInfoQueue)
         {
             mapDataThreadInfoQueue.Enqueue(new ThreadInfo<MapData>(callback, mapData));
@@ -143,11 +125,6 @@ public class MapGenerator : MonoBehaviour
     {
         MapDisplay display = GetComponent<MapDisplay>();
         display.HideMap();
-    }
-
-    void OnValidate()
-    {
-        if (Seed < 1) Seed = 1;
     }
 
     #endregion

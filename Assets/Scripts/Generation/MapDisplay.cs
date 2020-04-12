@@ -9,6 +9,14 @@ public class MapDisplay : MonoBehaviour
     public MeshFilter MeshFilter;
     public MeshRenderer MeshRenderer;
 
+    public void DrawHeightMap(float[,] heightMap)
+    {
+        Texture2D heightMapTexture = TextureGenerator.TextureFromHeightMap(heightMap);
+        MeshRenderer.gameObject.SetActive(false);
+        TextureRenderer.gameObject.SetActive(true);
+        DrawTexture(heightMapTexture);
+    }
+
     public void DrawMapInEditor(DrawMode drawMode, int mapChunkSize, MapData mapData, float heightMultiplier, int levelOfDetail)
     {
         // Create Textures
@@ -54,11 +62,10 @@ public class MapDisplay : MonoBehaviour
         TextureRenderer.gameObject.SetActive(false);
     }
 
-
     public void DrawTexture(Texture2D texture)
     {
         TextureRenderer.sharedMaterial.mainTexture = texture;
-        TextureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height);
+        TextureRenderer.transform.localScale = new Vector3(-(texture.width / 10f), 1, texture.height / 10f);
     }
 
     public void DrawMesh(MeshData meshData, Texture2D texture)
