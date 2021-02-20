@@ -8,6 +8,8 @@ using static MandalaLanguage;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Drawing;
+using System.Xml;
+using System.Web.UI.WebControls;
 
 public class MandalaGenerator
 {
@@ -39,10 +41,14 @@ public class MandalaGenerator
         StrokeWidth = Random.Next(MaxStrokeWidth - MinStrokeWidth) + MinStrokeWidth;
 
         SvgDocument SvgDocument = SvgHandler.NewSvgDocument(1000, 1000);
+        
         List<MandalaElement> elements = new List<MandalaElement>();
         ME_Empty startElement = new ME_Empty(SvgDocument, 0, MandalaElement.ElementId++);
         Size = startElement.Area;
         elements.Add(startElement);
+
+        XmlTextWriter writer = new XmlTextWriter("asdasdas.svg", Encoding.UTF8);
+        SvgDocument.Write(writer);
 
         MandalaElement nextElement;
         while (elements.Count > 0)
@@ -82,8 +88,11 @@ public class MandalaGenerator
                 Console.WriteLine("No rules found for shape: " + nextElement.Type);
             }
         }
-
+        XmlTextWriter writer2 = new XmlTextWriter("testSvg.svg", Encoding.UTF8);
+        SvgDocument.Write(writer2);
         UpdateInfoBox();
+
+        
 
         return SvgDocument;
     }
@@ -105,7 +114,7 @@ public class MandalaGenerator
         foreach(KeyValuePair<int, List<MandalaElement>> kvp in Elements)
         {
             Main.ElementGrid.RowDefinitions.Add(new RowDefinition() { Height = new System.Windows.GridLength(20) });
-            TextBox Text = new TextBox();
+            System.Windows.Controls.TextBox Text = new System.Windows.Controls.TextBox();
             Text.SetValue(Grid.RowProperty, row);
             Text.SetValue(Grid.ColumnProperty, 0);
             Text.MouseEnter += HighlightMandalaElement;
@@ -124,7 +133,7 @@ public class MandalaGenerator
 
     public static void HighlightMandalaElement(object sender, MouseEventArgs e)
     {
-        TextBox text = (TextBox)sender;
+        System.Windows.Controls.TextBox text = (System.Windows.Controls.TextBox)sender;
         int id = int.Parse(new String(text.Text.TakeWhile(Char.IsDigit).ToArray()));
 
         foreach(MandalaElement elem in Elements[id])
@@ -137,7 +146,7 @@ public class MandalaGenerator
 
     public static void UnhighlightMandalaElement(object sender, MouseEventArgs e)
     {
-        TextBox text = (TextBox)sender;
+        System.Windows.Controls.TextBox text = (System.Windows.Controls.TextBox)sender;
         int id = int.Parse(new String(text.Text.TakeWhile(Char.IsDigit).ToArray()));
 
         foreach (MandalaElement elem in Elements[id])
